@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Search and filter Tarik Moody's GitHub stars by language, topic, owner, and activity."
+    />
+    <title>GitHub Stars · Tarik Moody</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#index">Skip to index</a>
+
+    <header class="nav" id="top">
+      <div class="nav__inner">
+        <a class="brand" href="#top" aria-label="GitHub Stars home">
+          <span class="brand__mark">✦</span>
+          <span>Stars Index</span>
+        </a>
+        <button class="searchpill" id="open-command" type="button" aria-label="Open command search">
+          <span class="searchpill__icon" aria-hidden="true">⌕</span>
+          <span class="searchpill__text">Search starred repos</span>
+          <span class="searchpill__kbd" aria-hidden="true"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
+        <nav class="nav__right" aria-label="Page">
+          <a href="#featured">Featured</a>
+          <a href="#filters">Filters</a>
+          <a href="https://github.com/tmoody1973?tab=stars" rel="noreferrer">GitHub ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero reveal" aria-labelledby="hero-title">
+        <div class="hero__copy">
+          <p class="eyebrow">LIVE GITHUB INDEX · TMOODY1973</p>
+          <h1 id="hero-title">Your starred repos, organized like a working tool.</h1>
+          <p class="lede">
+            A searchable map of saved libraries, examples, tools, and experiments. Filter by language,
+            topic, owner, or activity without digging through GitHub's default stars page.
+          </p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#index">Browse the index</a>
+            <button class="btn btn--ghost" id="refresh-data" type="button">Refresh data</button>
+          </div>
+        </div>
+
+        <aside class="status-panel" aria-live="polite">
+          <div class="status-panel__top">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="load-state">Waiting for GitHub</span>
+          </div>
+          <dl class="metrics">
+            <div>
+              <dt>Repos</dt>
+              <dd id="metric-total">—</dd>
+            </div>
+            <div>
+              <dt>Languages</dt>
+              <dd id="metric-languages">—</dd>
+            </div>
+            <div>
+              <dt>Topics</dt>
+              <dd id="metric-topics">—</dd>
+            </div>
+          </dl>
+          <p class="panel-note" id="api-note">
+            Fetches public stars from GitHub. If the unauthenticated API limit is hit, this panel will say so.
+          </p>
+        </aside>
+      </section>
+
+      <section class="rail reveal" id="featured" aria-labelledby="featured-title">
+        <div class="section-head">
+          <p class="eyebrow">FEATURED</p>
+          <h2 id="featured-title">High-signal saves</h2>
+          <p>Top starred repositories from the current result set.</p>
+        </div>
+        <div class="featured-grid" id="featured-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="filters reveal" id="filters" aria-labelledby="filters-title">
+        <div class="section-head">
+          <p class="eyebrow">FILTERS</p>
+          <h2 id="filters-title">Cut the catalogue down.</h2>
+          <p>Search text is matched against name, owner, description, language, and topics.</p>
+        </div>
+
+        <form class="control-grid" id="controls">
+          <label>
+            <span>Search</span>
+            <input id="search-input" type="search" placeholder="auth, canvas, remix, llm…" autocomplete="off" />
+          </label>
+          <label>
+            <span>Language</span>
+            <select id="language-filter"></select>
+          </label>
+          <label>
+            <span>Topic</span>
+            <select id="topic-filter"></select>
+          </label>
+          <label>
+            <span>Owner</span>
+            <select id="owner-filter"></select>
+          </label>
+          <label>
+            <span>Sort</span>
+            <select id="sort-filter">
+              <option value="starred">Recently starred</option>
+              <option value="updated">Recently updated</option>
+              <option value="stars">Most GitHub stars</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </label>
+        </form>
+      </section>
+
+      <section class="rail reveal" aria-labelledby="recent-title">
+        <div class="section-head section-head--row">
+          <div>
+            <p class="eyebrow">RECENT</p>
+            <h2 id="recent-title">Latest saves</h2>
+          </div>
+          <a class="text-link" href="https://github.com/tmoody1973?tab=stars" rel="noreferrer">Open GitHub stars ↗</a>
+        </div>
+        <div class="compact-list" id="recent-list" aria-live="polite"></div>
+      </section>
+
+      <section class="index reveal" id="index" aria-labelledby="index-title">
+        <div class="section-head section-head--row">
+          <div>
+            <p class="eyebrow">INDEX</p>
+            <h2 id="index-title">All matching repos</h2>
+          </div>
+          <p class="result-count" id="result-count">Loading…</p>
+        </div>
+        <div class="repo-grid" id="repo-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="foot-stmt">
+      <p class="foot-stmt__line">A star list should work like memory, not archaeology.</p>
+      <div class="foot-stmt__meta">
+        <span class="brand brand--footer"><span class="brand__mark">✦</span> Stars Index</span>
+        <span>Built from public GitHub data · 2026</span>
+      </div>
+    </footer>
+
+    <div class="cmdk" id="cmdk" aria-hidden="true">
+      <button class="cmdk__backdrop" type="button" data-close aria-label="Close search"></button>
+      <section class="cmdk__panel" role="dialog" aria-modal="true" aria-labelledby="cmdk-title">
+        <div class="cmdk__field">
+          <span aria-hidden="true">⌕</span>
+          <input id="cmdk-input" type="search" placeholder="Search starred repos…" autocomplete="off" />
+          <kbd>esc</kbd>
+        </div>
+        <h2 class="sr-only" id="cmdk-title">Command search</h2>
+        <div class="cmdk__results" id="cmdk-results"></div>
+        <div class="cmdk__foot" aria-hidden="true">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> open</span>
+          <span><kbd>esc</kbd> close</span>
+        </div>
+      </section>
+    </div>
+
+    <template id="repo-card-template">
+      <article class="repo-card">
+        <div class="repo-card__top">
+          <p class="repo-card__owner"></p>
+          <a class="repo-card__name" target="_blank" rel="noreferrer"></a>
+        </div>
+        <p class="repo-card__description"></p>
+        <div class="topic-row"></div>
+        <dl class="repo-meta">
+          <div><dt>Language</dt><dd data-field="language"></dd></div>
+          <div><dt>Stars</dt><dd data-field="stars"></dd></div>
+          <div><dt>Updated</dt><dd data-field="updated"></dd></div>
+        </dl>
+      </article>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

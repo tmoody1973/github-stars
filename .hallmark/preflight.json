@@ -1,0 +1,8 @@
+{
+  "created": "2026-08-01",
+  "framework": "vanilla static HTML",
+  "fontStack": "Space Grotesk + Inter + JetBrains Mono",
+  "palette": "Hallmark Cobalt OKLCH tokens",
+  "motion": "small IntersectionObserver reveal; reduced-motion supported",
+  "spacing": "4pt CSS custom property scale"
+}
