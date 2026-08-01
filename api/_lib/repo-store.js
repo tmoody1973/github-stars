@@ -155,10 +155,10 @@ export async function searchRepos(query, embedding, limit = 80) {
   if (embedding?.length) {
     const queryVector = vectorLiteral(embedding);
     const semanticRows = await db`
-      SELECT *, 1 - (embedding <=> ${queryVector}::vector) AS score, TRUE AS semantic_match
+      SELECT *, embedding IS NOT NULL AS has_embedding, 1 - (embedding <=> ${queryVector}::vector) AS score, TRUE AS semantic_match
       FROM repos
       WHERE embedding IS NOT NULL
-      ORDER BY embedding <=> ${queryVector}::vector
+      ORDER BY (embedding <=> ${queryVector}::vector) + 0
       LIMIT ${limit}
     `;
 
