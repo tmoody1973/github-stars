@@ -27,8 +27,23 @@ Build a static client-side app first. This keeps the Buzz-hosted git proof simpl
    - featured high-signal repositories,
    - recent starred repositories,
    - the full searchable index.
-5. Provide search, language filter, topic filter, owner filter, and sorting.
-6. Provide a `⌘K` / `Ctrl+K` command palette for keyboard-first navigation.
+5. Provide search, category filter, language filter, topic filter, owner filter, and sorting.
+6. Infer plain-English categories from repo language, topics, name, and description.
+7. Generate plain-English summaries from public GitHub metadata.
+8. Provide a `⌘K` / `Ctrl+K` command palette for keyboard-first navigation.
+
+## Backend upgrade path
+
+Tarik wants real semantic search and saved summaries. That should be a second phase, not a fake frontend-only feature.
+
+Recommended direction:
+
+1. Add Neon/Postgres.
+2. Store `repos`, `repo_summaries`, `repo_categories`, and `repo_embeddings`.
+3. Add a Vercel ingestion function to fetch GitHub stars and save normalized repo records.
+4. Generate and store summaries/categories so they can be reviewed or edited later.
+5. Add embeddings for semantic search and query them from an `/api/search` route.
+6. Keep the static frontend as the reader UI, but move search data behind API endpoints.
 
 ## Design
 

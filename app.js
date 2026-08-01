@@ -2,6 +2,78 @@ const USERNAME = "tmoody1973";
 const MAX_PAGES = 10;
 const PER_PAGE = 100;
 
+const CATEGORY_RULES = [
+  {
+    name: "AI & LLMs",
+    clue: "Models, prompts, agents, RAG, embeddings, and AI app building.",
+    keywords: ["ai", "llm", "gpt", "openai", "anthropic", "claude", "agent", "agents", "rag", "embedding", "vector", "prompt", "langchain", "llama", "ollama", "mcp", "machine-learning", "semantic"]
+  },
+  {
+    name: "Automation & agents",
+    clue: "Tools that run workflows, browser actions, jobs, or agentic tasks.",
+    keywords: ["automation", "workflow", "agent", "agents", "bot", "browser", "scrape", "crawler", "playwright", "puppeteer", "worker", "scheduler", "cron", "mcp", "autonomous"]
+  },
+  {
+    name: "Web apps",
+    clue: "Frameworks, starters, components, and full-stack app examples.",
+    keywords: ["next", "nextjs", "react", "vue", "svelte", "astro", "remix", "tailwind", "frontend", "fullstack", "web", "app", "starter", "template", "typescript", "javascript"]
+  },
+  {
+    name: "Design & UI",
+    clue: "Interfaces, visual systems, components, motion, and product polish.",
+    keywords: ["design", "ui", "ux", "component", "components", "animation", "motion", "figma", "css", "shadcn", "radix", "storybook", "visual", "tailwind"]
+  },
+  {
+    name: "Data & scraping",
+    clue: "APIs, datasets, extraction, enrichment, analytics, and structured data.",
+    keywords: ["data", "database", "postgres", "sql", "analytics", "scrape", "scraper", "crawl", "crawler", "dataset", "etl", "api", "csv", "json", "firecrawl", "extract"]
+  },
+  {
+    name: "Dev tools",
+    clue: "CLIs, SDKs, libraries, testing, build tools, and developer workflow.",
+    keywords: ["cli", "sdk", "developer", "devtool", "tooling", "build", "test", "testing", "lint", "vite", "webpack", "package", "library", "git", "github"]
+  },
+  {
+    name: "Infrastructure",
+    clue: "Deploy, hosting, auth, cloud, observability, and backend systems.",
+    keywords: ["vercel", "deploy", "cloud", "server", "backend", "docker", "kubernetes", "auth", "oauth", "supabase", "clerk", "firebase", "observability", "monitoring"]
+  },
+  {
+    name: "Media & content",
+    clue: "Video, audio, images, publishing, storytelling, and content workflows.",
+    keywords: ["video", "audio", "image", "media", "content", "cms", "markdown", "blog", "publishing", "remotion", "ffmpeg", "podcast", "newsletter"]
+  },
+  {
+    name: "Business & productivity",
+    clue: "CRM, sales, ops, finance, documents, and practical business tools.",
+    keywords: ["crm", "sales", "finance", "billing", "invoice", "productivity", "notion", "spreadsheet", "docs", "document", "calendar", "email", "saas"]
+  },
+  {
+    name: "Learning & reference",
+    clue: "Guides, examples, courses, documentation, and repos saved to study later.",
+    keywords: ["awesome", "learn", "learning", "course", "guide", "docs", "documentation", "examples", "example", "tutorial", "reference", "book"]
+  }
+];
+
+const SEARCH_ALIASES = {
+  "ai": ["AI & LLMs", "agent", "llm", "prompt", "rag"],
+  "agents": ["Automation & agents", "AI & LLMs", "workflow", "mcp"],
+  "agent": ["Automation & agents", "AI & LLMs", "workflow", "mcp"],
+  "frontend": ["Web apps", "Design & UI", "react", "next", "css"],
+  "front-end": ["Web apps", "Design & UI", "react", "next", "css"],
+  "ui": ["Design & UI", "components", "interface", "frontend"],
+  "design": ["Design & UI", "figma", "motion", "interface"],
+  "scraping": ["Data & scraping", "crawler", "extract", "firecrawl"],
+  "scrape": ["Data & scraping", "crawler", "extract", "firecrawl"],
+  "data": ["Data & scraping", "analytics", "database", "api"],
+  "backend": ["Infrastructure", "Data & scraping", "server", "api"],
+  "deploy": ["Infrastructure", "vercel", "hosting", "cloud"],
+  "video": ["Media & content", "remotion", "ffmpeg", "media"],
+  "content": ["Media & content", "markdown", "cms", "publishing"],
+  "business": ["Business & productivity", "crm", "sales", "finance"],
+  "learn": ["Learning & reference", "guide", "examples", "docs"]
+};
+
 const state = {
   repos: [],
   filtered: [],
@@ -10,6 +82,7 @@ const state = {
   error: null,
   filters: {
     search: "",
+    category: "all",
     language: "all",
     topic: "all",
     owner: "all",
@@ -22,13 +95,15 @@ const elements = {
   statusDot: document.querySelector(".status-dot"),
   apiNote: document.querySelector("#api-note"),
   metricTotal: document.querySelector("#metric-total"),
-  metricLanguages: document.querySelector("#metric-languages"),
+  metricCategories: document.querySelector("#metric-categories"),
   metricTopics: document.querySelector("#metric-topics"),
   featuredGrid: document.querySelector("#featured-grid"),
+  categoryGrid: document.querySelector("#category-grid"),
   recentList: document.querySelector("#recent-list"),
   repoGrid: document.querySelector("#repo-grid"),
   resultCount: document.querySelector("#result-count"),
   searchInput: document.querySelector("#search-input"),
+  categoryFilter: document.querySelector("#category-filter"),
   languageFilter: document.querySelector("#language-filter"),
   topicFilter: document.querySelector("#topic-filter"),
   ownerFilter: document.querySelector("#owner-filter"),
@@ -52,7 +127,7 @@ function formatDate(value) {
 
 function normalizeStar(item) {
   const repo = item.repo || item;
-  return {
+  const base = {
     id: repo.id,
     name: repo.name || "Untitled",
     fullName: repo.full_name || `${repo.owner?.login || "unknown"}/${repo.name || "repo"}`,
@@ -69,6 +144,49 @@ function normalizeStar(item) {
     url: repo.html_url,
     homepage: repo.homepage
   };
+  base.category = categorizeRepo(base);
+  base.summary = summarizeRepo(base);
+  return base;
+}
+
+function searchableText(repo) {
+  return [repo.fullName, repo.description, repo.language, repo.owner, repo.category, repo.summary, ...repo.topics]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function expandedSearchTokens(query) {
+  return query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => [token, ...(SEARCH_ALIASES[token] || [])].join(" ").toLowerCase());
+}
+
+function categorizeRepo(repo) {
+  const text = [repo.fullName, repo.description, repo.language, ...repo.topics].join(" ").toLowerCase();
+  const scores = CATEGORY_RULES.map((rule) => {
+    const score = rule.keywords.reduce((total, keyword) => (text.includes(keyword) ? total + 1 : total), 0);
+    return { rule, score };
+  }).sort((a, b) => b.score - a.score);
+
+  return scores[0]?.score > 0 ? scores[0].rule.name : "General utilities";
+}
+
+function summarizeRepo(repo) {
+  const category = repo.category || "General utilities";
+  const language = repo.language && repo.language !== "Unspecified" ? `${repo.language} repo` : "repo";
+  const topicHint = repo.topics.length ? ` It is tagged with ${repo.topics.slice(0, 3).join(", ")}.` : "";
+  const description = repo.description && repo.description !== "No description provided." ? repo.description.trim() : "";
+
+  if (description) {
+    const cleaned = description.replace(/\s+/g, " ").replace(/[.。]+$/, "");
+    return `${category}: ${cleaned}.${topicHint}`;
+  }
+
+  return `${category}: a ${language} from ${repo.owner} saved for later review.${topicHint}`;
 }
 
 async function fetchStars() {
@@ -139,14 +257,16 @@ function updateLoadState(message, isError = false) {
 function hydrateFilters() {
   const languages = uniqueValues(state.repos.map((repo) => repo.language));
   const owners = uniqueValues(state.repos.map((repo) => repo.owner));
+  const categories = uniqueValues(state.repos.map((repo) => repo.category));
   const topics = uniqueValues(state.repos.flatMap((repo) => repo.topics)).slice(0, 100);
 
   fillSelect(elements.languageFilter, "All languages", languages);
+  fillSelect(elements.categoryFilter, "All categories", categories);
   fillSelect(elements.ownerFilter, "All owners", owners);
   fillSelect(elements.topicFilter, "All topics", topics);
 
   elements.metricTotal.textContent = formatNumber(state.repos.length);
-  elements.metricLanguages.textContent = formatNumber(languages.filter((item) => item !== "Unspecified").length);
+  elements.metricCategories.textContent = formatNumber(categories.length);
   elements.metricTopics.textContent = formatNumber(topics.length);
 }
 
@@ -161,17 +281,19 @@ function fillSelect(select, label, values) {
 }
 
 function applyFilters() {
-  const query = state.filters.search.trim().toLowerCase();
-  const tokens = query.split(/\s+/).filter(Boolean);
+  const tokens = expandedSearchTokens(state.filters.search);
 
   state.filtered = state.repos
     .filter((repo) => {
-      const haystack = [repo.fullName, repo.description, repo.language, repo.owner, ...repo.topics].join(" ").toLowerCase();
-      const matchesSearch = tokens.every((token) => haystack.includes(token));
+      const haystack = searchableText(repo);
+      const matchesSearch = tokens.every((tokenGroup) =>
+        tokenGroup.split(" ").some((token) => haystack.includes(token))
+      );
+      const matchesCategory = state.filters.category === "all" || repo.category === state.filters.category;
       const matchesLanguage = state.filters.language === "all" || repo.language === state.filters.language;
       const matchesTopic = state.filters.topic === "all" || repo.topics.includes(state.filters.topic);
       const matchesOwner = state.filters.owner === "all" || repo.owner === state.filters.owner;
-      return matchesSearch && matchesLanguage && matchesTopic && matchesOwner;
+      return matchesSearch && matchesCategory && matchesLanguage && matchesTopic && matchesOwner;
     })
     .sort(sortRepos);
 
@@ -187,9 +309,46 @@ function sortRepos(a, b) {
 
 function render() {
   renderFeatured();
+  renderCategories();
   renderRecent();
   renderIndex();
   renderCommandResults();
+}
+
+function renderCategories() {
+  const counts = new Map();
+  state.filtered.forEach((repo) => {
+    counts.set(repo.category, (counts.get(repo.category) || 0) + 1);
+  });
+
+  const categories = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  elements.categoryGrid.replaceChildren();
+  if (!categories.length) {
+    elements.categoryGrid.append(emptyCard("No categories match the current filters."));
+    return;
+  }
+
+  categories.forEach(([category, count]) => {
+    const rule = CATEGORY_RULES.find((item) => item.name === category);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "category-card";
+    card.innerHTML = `
+      <span class="category-card__count">${formatNumber(count)}</span>
+      <strong>${escapeHtml(category)}</strong>
+      <span>${escapeHtml(rule?.clue || "Repos that do not fit a more specific shelf yet.")}</span>
+    `;
+    card.addEventListener("click", () => {
+      state.filters.category = category;
+      elements.categoryFilter.value = category;
+      applyFilters();
+      document.querySelector("#index")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    elements.categoryGrid.append(card);
+  });
 }
 
 function renderFeatured() {
@@ -239,6 +398,8 @@ function repoCard(repo) {
   const name = node.querySelector(".repo-card__name");
   name.href = repo.url;
   name.textContent = repo.fullName;
+  node.querySelector(".repo-card__category").textContent = repo.category;
+  node.querySelector(".repo-card__summary").textContent = repo.summary;
   node.querySelector(".repo-card__description").textContent = repo.description;
   node.querySelector('[data-field="language"]').textContent = repo.language;
   node.querySelector('[data-field="stars"]').textContent = formatNumber(repo.stars);
@@ -268,11 +429,12 @@ function renderError(error) {
   card.className = "error-card";
   card.textContent = error.message;
   elements.featuredGrid.replaceChildren(card.cloneNode(true));
+  elements.categoryGrid.replaceChildren(card.cloneNode(true));
   elements.recentList.replaceChildren(card.cloneNode(true));
   elements.repoGrid.replaceChildren(card);
   elements.resultCount.textContent = "GitHub fetch failed";
   elements.metricTotal.textContent = "—";
-  elements.metricLanguages.textContent = "—";
+  elements.metricCategories.textContent = "—";
   elements.metricTopics.textContent = "—";
   elements.apiNote.textContent = "No fallback data is shown because the app only displays data returned by GitHub.";
 }
@@ -295,10 +457,12 @@ function closeCommand() {
 function renderCommandResults() {
   if (!elements.cmdk.classList.contains("is-open")) return;
   const query = elements.cmdkInput.value.trim().toLowerCase();
+  const tokens = expandedSearchTokens(query);
   const results = state.repos
     .filter((repo) => {
       if (!query) return true;
-      return [repo.fullName, repo.description, repo.language, repo.owner, ...repo.topics].join(" ").toLowerCase().includes(query);
+      const haystack = searchableText(repo);
+      return tokens.every((tokenGroup) => tokenGroup.split(" ").some((token) => haystack.includes(token)));
     })
     .sort((a, b) => b.stars - a.stars)
     .slice(0, 10);
@@ -315,7 +479,7 @@ function renderCommandResults() {
     item.type = "button";
     item.className = `cmdk__item${index === state.commandIndex ? " is-active" : ""}`;
     item.innerHTML = `
-      <span><strong>${escapeHtml(repo.fullName)}</strong><span>${escapeHtml(repo.description)}</span></span>
+      <span><strong>${escapeHtml(repo.fullName)}</strong><span>${escapeHtml(repo.summary)}</span></span>
       <span>${formatNumber(repo.stars)} ★</span>
     `;
     item.addEventListener("click", () => window.open(repo.url, "_blank", "noopener,noreferrer"));
@@ -360,6 +524,7 @@ function bindEvents() {
   });
 
   [
+    [elements.categoryFilter, "category"],
     [elements.languageFilter, "language"],
     [elements.topicFilter, "topic"],
     [elements.ownerFilter, "owner"],

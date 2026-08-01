@@ -388,6 +388,7 @@ dd {
 }
 
 .featured-grid,
+.category-grid,
 .repo-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -399,6 +400,7 @@ dd {
 }
 
 .repo-card,
+.category-card,
 .empty-card,
 .error-card {
   min-width: 0;
@@ -414,13 +416,70 @@ dd {
   transition: border-color var(--dur-med) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
+.category-card {
+  min-height: 180px;
+  display: grid;
+  align-content: space-between;
+  gap: var(--space-md);
+  text-align: left;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: border-color var(--dur-med) var(--ease-out), transform var(--dur-fast) var(--ease-out),
+    background var(--dur-med) var(--ease-out);
+}
+
+.category-card:hover,
+.category-card.is-hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  transform: translateY(-2px);
+}
+
+.category-card:active,
+.category-card.is-active {
+  transform: translateY(1px);
+}
+
+.category-card:disabled,
+.category-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.category-card.is-loading {
+  border-color: var(--color-accent);
+}
+
+.category-card.is-error {
+  border-color: var(--color-error);
+}
+
+.category-card.is-success {
+  border-color: var(--color-success);
+}
+
+.category-card strong {
+  display: block;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  letter-spacing: -0.035em;
+}
+
+.category-card__count {
+  color: var(--color-accent);
+  font: 600 var(--text-xs) / 1.2 var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
 .repo-card:hover {
   border-color: var(--color-accent);
   transform: translateY(-2px);
 }
 
 .repo-card__owner,
-.repo-card__description {
+.repo-card__description,
+.repo-card__summary {
   margin: 0;
   color: var(--color-muted);
 }
@@ -448,7 +507,25 @@ dd {
 }
 
 .repo-card__description {
-  min-height: 3lh;
+  font-size: var(--text-sm);
+}
+
+.repo-card__category {
+  width: fit-content;
+  margin: 0;
+  border: var(--rule-hair) solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  padding: 0.3rem 0.5rem;
+  font: 600 var(--text-xs) / 1.2 var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.repo-card__summary {
+  min-height: 4lh;
+  color: var(--color-ink-2);
 }
 
 .topic-row {
@@ -785,6 +862,7 @@ select.is-success {
   .hero,
   .control-grid,
   .featured-grid,
+  .category-grid,
   .repo-grid {
     grid-template-columns: 1fr;
   }

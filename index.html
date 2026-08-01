@@ -46,7 +46,7 @@
           <h1 id="hero-title">Your starred repos, organized like a working tool.</h1>
           <p class="lede">
             A searchable map of saved libraries, examples, tools, and experiments. Filter by language,
-            topic, owner, or activity without digging through GitHub's default stars page.
+            plain-English category, topic, owner, or activity without digging through GitHub's default stars page.
           </p>
           <div class="hero__actions">
             <a class="btn btn--primary" href="#index">Browse the index</a>
@@ -65,8 +65,8 @@
               <dd id="metric-total">—</dd>
             </div>
             <div>
-              <dt>Languages</dt>
-              <dd id="metric-languages">—</dd>
+              <dt>Categories</dt>
+              <dd id="metric-categories">—</dd>
             </div>
             <div>
               <dt>Topics</dt>
@@ -88,11 +88,20 @@
         <div class="featured-grid" id="featured-grid" aria-live="polite"></div>
       </section>
 
+      <section class="rail reveal" id="categories" aria-labelledby="categories-title">
+        <div class="section-head">
+          <p class="eyebrow">CATEGORIES</p>
+          <h2 id="categories-title">Plain-English shelves</h2>
+          <p>Repos are grouped by what they help you do, not just by raw GitHub topics.</p>
+        </div>
+        <div class="category-grid" id="category-grid" aria-live="polite"></div>
+      </section>
+
       <section class="filters reveal" id="filters" aria-labelledby="filters-title">
         <div class="section-head">
           <p class="eyebrow">FILTERS</p>
           <h2 id="filters-title">Cut the catalogue down.</h2>
-          <p>Search text is matched against name, owner, description, language, and topics.</p>
+          <p>Search text is matched against name, owner, summary, category, description, language, and topics.</p>
         </div>
 
         <form class="control-grid" id="controls">
@@ -103,6 +112,10 @@
           <label>
             <span>Language</span>
             <select id="language-filter"></select>
+          </label>
+          <label>
+            <span>Category</span>
+            <select id="category-filter"></select>
           </label>
           <label>
             <span>Topic</span>
@@ -179,6 +192,8 @@
           <p class="repo-card__owner"></p>
           <a class="repo-card__name" target="_blank" rel="noreferrer"></a>
         </div>
+        <p class="repo-card__category"></p>
+        <p class="repo-card__summary"></p>
         <p class="repo-card__description"></p>
         <div class="topic-row"></div>
         <dl class="repo-meta">
