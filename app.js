@@ -87,7 +87,15 @@ const state = {
     topic: "all",
     owner: "all",
     sort: "starred"
-  }
+  },
+  semantic: {
+    query: "",
+    repos: null,
+    mode: "local",
+    timer: null,
+    controller: null
+  },
+  dataSource: "github"
 };
 
 const elements = {
@@ -126,6 +134,34 @@ function formatDate(value) {
 }
 
 function normalizeStar(item) {
+  if (item.fullName && item.owner) {
+    const base = {
+      id: item.id,
+      name: item.name || item.fullName.split("/").at(-1),
+      fullName: item.fullName,
+      owner: item.owner,
+      description: item.description || "No description provided.",
+      language: item.language || "Unspecified",
+      topics: Array.isArray(item.topics) ? item.topics : [],
+      stars: item.stars || 0,
+      forks: item.forks || 0,
+      issues: item.issues || 0,
+      updatedAt: item.updatedAt,
+      pushedAt: item.pushedAt,
+      starredAt: item.starredAt,
+      url: item.url,
+      homepage: item.homepage,
+      category: item.category,
+      summary: item.summary,
+      score: item.score,
+      semanticMatch: item.semanticMatch,
+      hasEmbedding: item.hasEmbedding
+    };
+    base.category ||= categorizeRepo(base);
+    base.summary ||= summarizeRepo(base);
+    return base;
+  }
+
   const repo = item.repo || item;
   const base = {
     id: repo.id,
@@ -192,11 +228,26 @@ function summarizeRepo(repo) {
 async function fetchStars() {
   state.loading = true;
   state.error = null;
-  updateLoadState("Fetching GitHub stars…");
-
-  const all = [];
+  updateLoadState("Loading saved stars…");
 
   try {
+    const saved = await fetchSavedStars();
+    if (saved.length) {
+      state.dataSource = "neon";
+      state.repos = dedupeRepos(saved.map(normalizeStar));
+      hydrateFilters();
+      applyFilters();
+      updateLoadState(`Loaded ${state.repos.length} saved repos.`);
+      elements.apiNote.textContent = "Data loaded from Neon. Summaries and categories are saved; semantic search activates when embeddings are present.";
+      return;
+    }
+  } catch (error) {
+    updateLoadState("Saved data unavailable. Falling back to GitHub…");
+  }
+
+  try {
+    updateLoadState("Fetching GitHub stars…");
+    const all = [];
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const url = new URL(`https://api.github.com/users/${USERNAME}/starred`);
       url.searchParams.set("sort", "created");
@@ -225,10 +276,11 @@ async function fetchStars() {
     }
 
     state.repos = dedupeRepos(all);
+    state.dataSource = "github";
     hydrateFilters();
     applyFilters();
     updateLoadState(`Loaded ${state.repos.length} starred repos.`);
-    elements.apiNote.textContent = "Data loaded from GitHub's public starred repositories API.";
+    elements.apiNote.textContent = "Data loaded live from GitHub because the saved Neon index was empty or unavailable.";
   } catch (error) {
     state.error = error;
     state.repos = [];
@@ -239,6 +291,16 @@ async function fetchStars() {
     state.loading = false;
     elements.refreshButton.classList.remove("is-loading");
   }
+}
+
+async function fetchSavedStars() {
+  const response = await fetch("/api/stars", {
+    headers: { Accept: "application/json" }
+  });
+  if (!response.ok) throw new Error(`Saved stars returned ${response.status}.`);
+  const data = await response.json();
+  if (!data.ok) throw new Error(data.error || "Saved stars failed.");
+  return Array.isArray(data.repos) ? data.repos : [];
 }
 
 function dedupeRepos(repos) {
@@ -282,13 +344,15 @@ function fillSelect(select, label, values) {
 
 function applyFilters() {
   const tokens = expandedSearchTokens(state.filters.search);
+  const semanticActive = isSemanticResultActive();
+  const sourceRepos = semanticActive ? state.semantic.repos : state.repos;
 
-  state.filtered = state.repos
+  state.filtered = sourceRepos
     .filter((repo) => {
       const haystack = searchableText(repo);
-      const matchesSearch = tokens.every((tokenGroup) =>
-        tokenGroup.split(" ").some((token) => haystack.includes(token))
-      );
+      const matchesSearch = semanticActive || tokens.every((tokenGroup) =>
+          tokenGroup.split(" ").some((token) => haystack.includes(token))
+        );
       const matchesCategory = state.filters.category === "all" || repo.category === state.filters.category;
       const matchesLanguage = state.filters.language === "all" || repo.language === state.filters.language;
       const matchesTopic = state.filters.topic === "all" || repo.topics.includes(state.filters.topic);
@@ -301,6 +365,9 @@ function applyFilters() {
 }
 
 function sortRepos(a, b) {
+  if (state.filters.sort === "relevance" && state.filters.search.trim()) {
+    return (b.score || 0) - (a.score || 0);
+  }
   if (state.filters.sort === "updated") return new Date(b.pushedAt || b.updatedAt) - new Date(a.pushedAt || a.updatedAt);
   if (state.filters.sort === "stars") return b.stars - a.stars;
   if (state.filters.sort === "name") return a.fullName.localeCompare(b.fullName);
@@ -378,7 +445,10 @@ function renderRecent() {
 }
 
 function renderIndex() {
-  elements.resultCount.textContent = `${formatNumber(state.filtered.length)} matching repos`;
+  const mode = isSemanticResultActive()
+    ? state.semantic.mode === "semantic" ? "semantic matches" : "database keyword matches"
+    : "matching repos";
+  elements.resultCount.textContent = `${formatNumber(state.filtered.length)} ${mode}`;
   renderCards(elements.repoGrid, state.filtered, "No repositories match the current filters.");
 }
 
@@ -487,6 +557,54 @@ function renderCommandResults() {
   });
 }
 
+function isSemanticResultActive() {
+  const query = state.filters.search.trim();
+  return Boolean(query && state.semantic.query === query && Array.isArray(state.semantic.repos));
+}
+
+function queueSemanticSearch() {
+  const query = state.filters.search.trim();
+  window.clearTimeout(state.semantic.timer);
+
+  if (state.semantic.controller) state.semantic.controller.abort();
+  state.semantic.controller = null;
+
+  if (query.length < 2 || state.dataSource !== "neon") {
+    state.semantic = { ...state.semantic, query: "", repos: null, mode: "local" };
+    return;
+  }
+
+  state.semantic.timer = window.setTimeout(async () => {
+    const controller = new AbortController();
+    state.semantic.controller = controller;
+
+    try {
+      const url = new URL("/api/search", window.location.origin);
+      url.searchParams.set("q", query);
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Search returned ${response.status}.`);
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || "Search failed.");
+      if (state.filters.search.trim() !== query) return;
+
+      state.semantic.query = query;
+      state.semantic.repos = (data.repos || []).map(normalizeStar);
+      state.semantic.mode = data.semantic ? "semantic" : "database-keyword";
+      elements.apiNote.textContent = data.semantic
+        ? "Search is using saved embeddings from Neon."
+        : "Search is using saved Neon data. Add OPENAI_API_KEY and refresh embeddings for true semantic ranking.";
+      applyFilters();
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      state.semantic = { ...state.semantic, query: "", repos: null, mode: "local" };
+      applyFilters();
+    }
+  }, 250);
+}
+
 function handleCommandKey(event) {
   const items = [...elements.cmdkResults.querySelectorAll(".cmdk__item")];
   if (event.key === "Escape") {
@@ -520,6 +638,7 @@ function escapeHtml(value) {
 function bindEvents() {
   elements.searchInput.addEventListener("input", (event) => {
     state.filters.search = event.target.value;
+    queueSemanticSearch();
     applyFilters();
   });
 

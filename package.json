@@ -6,6 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "check": "node --check app.js"
+    "check": "node --check app.js && node --check api/stars.js && node --check api/search.js && node --check api/refresh.js && node --check scripts/migrate.mjs && node --check scripts/ingest-stars.mjs",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:ingest": "node scripts/ingest-stars.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
   }
 }

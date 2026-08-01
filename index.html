@@ -74,7 +74,7 @@
             </div>
           </dl>
           <p class="panel-note" id="api-note">
-            Fetches public stars from GitHub. If the unauthenticated API limit is hit, this panel will say so.
+            Loads saved summaries from Neon when available, then falls back to GitHub's public stars API.
           </p>
         </aside>
       </section>
@@ -129,6 +129,7 @@
             <span>Sort</span>
             <select id="sort-filter">
               <option value="starred">Recently starred</option>
+              <option value="relevance">Search relevance</option>
               <option value="updated">Recently updated</option>
               <option value="stars">Most GitHub stars</option>
               <option value="name">Name A–Z</option>

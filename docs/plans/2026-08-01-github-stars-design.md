@@ -36,14 +36,15 @@ Build a static client-side app first. This keeps the Buzz-hosted git proof simpl
 
 Tarik wants real semantic search and saved summaries. That should be a second phase, not a fake frontend-only feature.
 
-Recommended direction:
+Implemented direction:
 
 1. Add Neon/Postgres.
-2. Store `repos`, `repo_summaries`, `repo_categories`, and `repo_embeddings`.
-3. Add a Vercel ingestion function to fetch GitHub stars and save normalized repo records.
-4. Generate and store summaries/categories so they can be reviewed or edited later.
-5. Add embeddings for semantic search and query them from an `/api/search` route.
-6. Keep the static frontend as the reader UI, but move search data behind API endpoints.
+2. Store repos with saved summaries, categories, topics, and optional embeddings.
+3. Add a Vercel refresh function to fetch GitHub stars and save normalized repo records.
+4. Generate and store deterministic summaries/categories from public GitHub metadata.
+5. Add embeddings for semantic search when `OPENAI_API_KEY` is present.
+6. Query saved data from `/api/stars` and search from `/api/search`.
+7. Keep the static frontend as the reader UI, but move saved/search data behind API endpoints.
 
 ## Design
 
