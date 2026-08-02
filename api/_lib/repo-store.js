@@ -122,6 +122,29 @@ export async function upsertRepos(repos, embeddings = []) {
   return { saved: repos.length, embedded };
 }
 
+export async function reposNeedingEmbeddings(repos) {
+  if (!repos.length) return [];
+
+  const db = sql();
+  const rows = await db`
+    SELECT id, search_document, embedding IS NOT NULL AS has_embedding
+    FROM repos
+  `;
+  const existing = new Map(rows.map((row) => [
+    Number(row.id),
+    {
+      searchDocument: row.search_document || "",
+      hasEmbedding: Boolean(row.has_embedding)
+    }
+  ]));
+
+  return repos.filter((repo) => {
+    const currentDocument = repo.searchDocument || buildSearchDocument(repo);
+    const saved = existing.get(Number(repo.id));
+    return !saved || !saved.hasEmbedding || saved.searchDocument !== currentDocument;
+  });
+}
+
 export async function listRepos() {
   const db = sql();
   const rows = await db`

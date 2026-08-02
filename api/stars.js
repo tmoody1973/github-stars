@@ -2,7 +2,7 @@ import { hasDatabase } from "./_lib/db.js";
 import { initSchema, listRepos, repoStats } from "./_lib/repo-store.js";
 
 export default async function handler(request, response) {
-  response.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=900");
+  response.setHeader("Cache-Control", "no-store");
 
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");

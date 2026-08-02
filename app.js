@@ -1,6 +1,7 @@
 const USERNAME = "tmoody1973";
 const MAX_PAGES = 10;
 const PER_PAGE = 100;
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
 
 const CATEGORY_RULES = [
   {
@@ -225,28 +226,35 @@ function summarizeRepo(repo) {
   return `${category}: a ${language} from ${repo.owner} saved for later review.${topicHint}`;
 }
 
-async function fetchStars() {
-  state.loading = true;
+async function fetchStars({ requestRefresh = false, silent = false } = {}) {
+  state.loading = !silent;
   state.error = null;
-  updateLoadState("Loading saved stars…");
+  let refreshResult = null;
+  if (!silent) updateLoadState(requestRefresh ? "Refreshing GitHub stars…" : "Loading saved stars…");
 
   try {
+    if (requestRefresh) refreshResult = await requestSavedStarsRefresh();
     const saved = await fetchSavedStars();
     if (saved.length) {
       state.dataSource = "neon";
       state.repos = dedupeRepos(saved.map(normalizeStar));
       hydrateFilters();
       applyFilters();
-      updateLoadState(`Loaded ${state.repos.length} saved repos.`);
-      elements.apiNote.textContent = "Data loaded from Neon. Summaries and categories are saved; semantic search activates when embeddings are present.";
+      if (!silent) {
+        const refreshMessage = formatRefreshResult(refreshResult);
+        updateLoadState(refreshMessage || `Loaded ${state.repos.length} saved repos.`);
+        elements.apiNote.textContent = refreshMessage
+          ? "GitHub sync completed, then saved Neon data was reloaded without cache."
+          : "Data loaded from Neon. Summaries and categories are saved; semantic search activates when embeddings are present.";
+      }
       return;
     }
   } catch (error) {
-    updateLoadState("Saved data unavailable. Falling back to GitHub…");
+    if (!silent) updateLoadState("Saved data unavailable. Falling back to GitHub…");
   }
 
   try {
-    updateLoadState("Fetching GitHub stars…");
+    if (!silent) updateLoadState("Fetching GitHub stars…");
     const all = [];
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const url = new URL(`https://api.github.com/users/${USERNAME}/starred`);
@@ -270,7 +278,7 @@ async function fetchStars() {
 
       const pageItems = await response.json();
       all.push(...pageItems.map(normalizeStar));
-      updateLoadState(`Fetched ${all.length} starred repos…`);
+      if (!silent) updateLoadState(`Fetched ${all.length} starred repos…`);
 
       if (pageItems.length < PER_PAGE) break;
     }
@@ -279,23 +287,46 @@ async function fetchStars() {
     state.dataSource = "github";
     hydrateFilters();
     applyFilters();
-    updateLoadState(`Loaded ${state.repos.length} starred repos.`);
-    elements.apiNote.textContent = "Data loaded live from GitHub because the saved Neon index was empty or unavailable.";
+    if (!silent) {
+      updateLoadState(`Loaded ${state.repos.length} starred repos.`);
+      elements.apiNote.textContent = "Data loaded live from GitHub because the saved Neon index was empty or unavailable.";
+    }
   } catch (error) {
     state.error = error;
     state.repos = [];
     state.filtered = [];
-    renderError(error);
-    updateLoadState("GitHub fetch failed.", true);
+    if (!silent) {
+      renderError(error);
+      updateLoadState("GitHub fetch failed.", true);
+    }
   } finally {
     state.loading = false;
     elements.refreshButton.classList.remove("is-loading");
   }
 }
 
+async function requestSavedStarsRefresh() {
+  const response = await fetch("/api/refresh", {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    cache: "no-store"
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.error || `Refresh returned ${response.status}.`);
+  return data;
+}
+
+function formatRefreshResult(result) {
+  if (!result) return "";
+  if (result.skipped) return "Refresh skipped; saved index was updated moments ago.";
+  const embedded = result.embedded ? `, ${result.embedded} embedded` : "";
+  return `Synced ${result.saved || result.fetched || 0} GitHub stars${embedded}.`;
+}
+
 async function fetchSavedStars() {
   const response = await fetch("/api/stars", {
-    headers: { Accept: "application/json" }
+    headers: { Accept: "application/json" },
+    cache: "no-store"
   });
   if (!response.ok) throw new Error(`Saved stars returned ${response.status}.`);
   const data = await response.json();
@@ -657,7 +688,7 @@ function bindEvents() {
 
   elements.refreshButton.addEventListener("click", () => {
     elements.refreshButton.classList.add("is-loading");
-    fetchStars();
+    fetchStars({ requestRefresh: true });
   });
 
   elements.openCommand.addEventListener("click", openCommand);
@@ -700,3 +731,11 @@ function initReveal() {
 bindEvents();
 initReveal();
 fetchStars();
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  if (state.loading) return;
+  fetchStars({ silent: true });
+}, AUTO_REFRESH_INTERVAL_MS);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !state.loading) fetchStars({ silent: true });
+});

@@ -20,7 +20,8 @@ The app includes the backend path for real semantic search:
 - Neon/Postgres stores repos, categories, summaries, and optional embeddings
 - `/api/stars` returns the saved index
 - `/api/search` performs vector search when embeddings are present, otherwise it falls back to database keyword search
-- `/api/refresh` refreshes GitHub stars when called with `GITHUB_STARS_REFRESH_TOKEN`
+- `/api/refresh` refreshes GitHub stars for manual sync and Vercel cron polling
+- `vercel.json` polls `/api/refresh` every 5 minutes; unchanged repos keep their existing embeddings
 
 Required environment variables:
 
@@ -28,6 +29,8 @@ Required environment variables:
 - `OPENAI_API_KEY`: optional, required for real semantic embeddings
 - `GITHUB_TOKEN`: optional, raises GitHub API rate limits during refresh
 - `GITHUB_STARS_REFRESH_TOKEN`: required for production refresh endpoint access
+- `CRON_SECRET`: required for Vercel cron bearer-token authorization
+- `ALLOW_PUBLIC_REFRESH`: set to `1` to let the frontend Refresh button trigger a throttled production refresh
 
 Local database commands:
 
