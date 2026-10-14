@@ -56,9 +56,10 @@ Rules every published post meets:
 
 ## The daily run, in order
 
-A cron (a job Vercel runs on a schedule) calls `/api/generate-post` at 11:30 UTC, Monday to
-Friday. That is 6:30am Central in summer and 5:30am in winter. It runs half an hour after the
-existing star refresh so new stars are usually in.
+A cron (a job Vercel runs on a schedule) calls `/api/generate-post` at 12:00 UTC, Monday to
+Friday. That is 7am Central in summer and 6am in winter. On the Hobby plan a cron can fire
+anywhere inside its hour, so the run is placed a full hour after the 11:00 star refresh to keep the
+two from overlapping.
 
 1. **Skip if done.** If a post already exists for today's date (Central time), return it and stop.
    Running the job twice never makes two posts.
@@ -113,8 +114,10 @@ Two new tables, created by the existing migrate script:
 - `created_at`
 
 **post_repos**
-- `repo_id` (primary key, references `repos`): because it is the primary key, the database itself
-  refuses to use a repo twice, even if the code has a bug.
+- `repo_id` (primary key): because it is the primary key, the database itself refuses to use a
+  repo twice, even if the code has a bug. There is deliberately no foreign key to `repos`, so a
+  future cleanup of unstarred repos can never be blocked by an old post. Each post stores its own
+  titles and URLs in `entries`.
 - `post_id` (references `posts`), `position` (1 to 5)
 
 ## Endpoints
@@ -122,10 +125,12 @@ Two new tables, created by the existing migrate script:
 | Endpoint | Who can call it | What it does |
 |---|---|---|
 | `GET /api/generate-post` | Vercel cron, with `CRON_SECRET` | The daily run |
-| `POST /api/generate-post` | Tarik, with `GITHUB_STARS_REFRESH_TOKEN` | Manual run; `?dryRun=1` returns a post without saving it |
+| `POST /api/generate-post` | Tarik, with `POSTS_ADMIN_TOKEN` in an `x-admin-token` header | Manual run; `?dryRun=1` returns a post without saving it |
 | `GET /api/posts` | Anyone | Published posts, newest first, 20 per page |
 
-Authorization reuses the same checks as `/api/refresh`.
+The cron check is shared with `/api/refresh`. Manual runs use a new `POSTS_ADMIN_TOKEN` because
+Vercel stores the existing refresh token as a secret nobody can read back, which would make test
+runs impossible. The token travels in a header, never in the URL, so it stays out of request logs.
 
 ## Blog page
 
