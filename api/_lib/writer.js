@@ -1,7 +1,10 @@
 import { bannedWords } from "./slop.js";
 import { HOOK_MAX_CHARS, MAX_POST_CHARS } from "./post-format.js";
+import { HUMANIZE_EXAMPLES, HUMANIZE_STYLE_GUIDE } from "./humanize-references.js";
 
 export const WRITER_MODEL = process.env.OPENAI_WRITER_MODEL || "gpt-5";
+// Two writer calls must fit inside the function's 300 s limit with time left for GitHub.
+const WRITER_TIMEOUT_MS = 120_000;
 
 const FORMAT_EXAMPLE = `1. GeoLibre: A lightweight, cloud-native GIS platform for visualizing, exploring, and analyzing geospatial data. It runs in the web browser, on the desktop, on mobile, and inside Jupyter notebooks.
 https://github.com/opengeos/GeoLibre
@@ -73,7 +76,15 @@ Rules:
 - No "not just X, it's Y", no "Here's the thing", no "Let's dive in", no generic upbeat ending, no "game-changer".
 - Never use these words: ${bannedWords().join(", ")}.
 - The question is specific and answerable from experience, such as which one readers would open first or what they use instead. Not "What do you think?".
-- The whole post must stay under ${MAX_POST_CHARS} characters including links. Aim for 1,200 to 2,000.`;
+- The whole post must stay under ${MAX_POST_CHARS} characters including links. Aim for 1,200 to 2,000.
+
+The rules above win wherever these references differ (for example, first person never means claiming Tarik used a project).
+
+Worked examples of AI-sounding text and human rewrites:
+${HUMANIZE_EXAMPLES}
+
+How to write like a person:
+${HUMANIZE_STYLE_GUIDE}`;
 }
 
 function repoBlock(repo) {
@@ -126,6 +137,7 @@ export async function writeDraft({ repos, feedback = null }) {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json"
     },
+    signal: AbortSignal.timeout(WRITER_TIMEOUT_MS),
     body: JSON.stringify({
       model: WRITER_MODEL,
       messages: buildMessages({ repos, feedback }),

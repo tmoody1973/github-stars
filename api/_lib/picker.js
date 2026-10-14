@@ -22,6 +22,7 @@ export async function pickRepos({ db = sql(), detailsFor = fetchRepoDetails } = 
 }
 
 export async function keepActive(candidates, detailsFor, count) {
+  if (candidates.length < count) return null;
   const kept = [];
   for (const [index, repo] of candidates.entries()) {
     if (kept.length === count) break;

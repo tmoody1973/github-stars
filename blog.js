@@ -3,26 +3,46 @@ import { drawCard } from "./card.js";
 const list = document.querySelector("#posts");
 const status = document.querySelector("#posts-status");
 const template = document.querySelector("#post-template");
+const olderButton = document.querySelector("#older-posts");
 const GITHUB_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/;
+// A shared /blog#date link may point past the first page; load a few pages to find it.
+const MAX_PAGES_FOR_ANCHOR = 10;
 
-loadPosts();
+let nextBefore = null;
 
-async function loadPosts() {
-  try {
-    const response = await fetch("/api/posts");
-    const json = await response.json();
-    if (!response.ok || !json.ok) throw new Error(json.error || `request failed (${response.status})`);
-    if (!json.posts.length) {
-      status.textContent = "No posts yet. The first one lands on the next weekday morning.";
-      return;
-    }
-    status.hidden = true;
-    json.posts.forEach((post) => list.append(renderPost(post)));
-    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
-  } catch (error) {
-    status.textContent = `Couldn't load posts: ${error.message}`;
-    status.classList.add("is-error");
+olderButton.addEventListener("click", () => loadPage().catch(showError));
+start().catch(showError);
+
+async function start() {
+  await loadPage();
+  if (!list.children.length) {
+    status.hidden = false;
+    status.textContent = "No posts yet. The first one lands on the next weekday morning.";
+    return;
   }
+  const target = location.hash.slice(1);
+  if (!target) return;
+  for (let page = 1; !document.getElementById(target) && nextBefore && page < MAX_PAGES_FOR_ANCHOR; page += 1) {
+    await loadPage();
+  }
+  document.getElementById(target)?.scrollIntoView();
+}
+
+async function loadPage() {
+  const url = nextBefore ? `/api/posts?before=${nextBefore}` : "/api/posts";
+  const response = await fetch(url);
+  const json = await response.json();
+  if (!response.ok || !json.ok) throw new Error(json.error || `request failed (${response.status})`);
+  status.hidden = true;
+  json.posts.forEach((post) => list.append(renderPost(post)));
+  nextBefore = json.nextBefore || null;
+  olderButton.hidden = !nextBefore;
+}
+
+function showError(error) {
+  status.hidden = false;
+  status.textContent = `Couldn't load posts: ${error.message}`;
+  status.classList.add("is-error");
 }
 
 function renderPost(post) {

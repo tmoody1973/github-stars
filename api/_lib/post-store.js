@@ -56,10 +56,12 @@ export async function findPostByDate(date, db = sql()) {
   return rows[0] ? rowToPost(rows[0]) : null;
 }
 
-export async function listPosts({ limit = 20 } = {}, db = sql()) {
+// Keyset paging: `before` is the oldest date the reader already has (exclusive).
+export async function listPosts({ limit = 20, before = null } = {}, db = sql()) {
   const rows = await db`
     SELECT id, post_date::text AS post_date, theme, hook, body_text, entries, sloplint_score, attempts
     FROM posts
+    WHERE ${before}::date IS NULL OR post_date < ${before}::date
     ORDER BY post_date DESC
     LIMIT ${limit}
   `;

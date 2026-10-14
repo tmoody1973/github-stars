@@ -47,3 +47,21 @@ test("parseDraft throws on refusal", () => {
 test("parseDraft throws on empty content", () => {
   assert.throws(() => parseDraft({ choices: [] }), /no content/);
 });
+
+test("system prompt carries humanize's worked examples verbatim", () => {
+  const [system] = buildMessages({ repos, feedback: null });
+  assert.ok(system.content.includes("Move faster. Your competition is."));
+  assert.ok(system.content.includes("Vary your rhythm"));
+});
+
+test("the OpenAI call has a timeout so a hung request fails with a logged error", async () => {
+  const { writeDraft } = await import("../api/_lib/writer.js");
+  process.env.OPENAI_API_KEY = "test-key";
+  let init;
+  globalThis.fetch = async (_url, options) => {
+    init = options;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(sampleDraft) } }] }), { status: 200 });
+  };
+  await writeDraft({ repos, feedback: null });
+  assert.ok(init.signal instanceof AbortSignal);
+});

@@ -11,5 +11,10 @@
       "path": "/api/generate-post",
       "schedule": "0 12 * * 1-5"
     }
-  ]
+  ],
+  "functions": {
+    "api/generate-post.js": {
+      "maxDuration": 300
+    }
+  }
 }

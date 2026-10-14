@@ -28,3 +28,10 @@ test("returns null when too few neighbors survive", async () => {
   const kept = await keepActive(candidates, details({ "x/a": archived, "x/b": archived, "x/c": archived }), 5);
   assert.equal(kept, null);
 });
+
+test("skips GitHub entirely when there are too few candidates", async () => {
+  let calls = 0;
+  const kept = await keepActive(candidates.slice(0, 4), async () => { calls += 1; return { archived: false, readme: "" }; }, 5);
+  assert.equal(kept, null);
+  assert.equal(calls, 0);
+});

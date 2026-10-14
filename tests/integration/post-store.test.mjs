@@ -43,5 +43,8 @@ test("saves a post and marks its repos used, atomically", { skip: !enabled }, as
   const latest = await store.listPosts({ limit: 1 });
   assert.equal(latest[0].date, "2099-01-01");
 
+  const older = await store.listPosts({ limit: 5, before: "2099-01-01" });
+  assert.ok(older.every((post) => post.date < "2099-01-01"), "before is exclusive");
+
   await db`DELETE FROM posts WHERE post_date >= '2099-01-01'`;
 });

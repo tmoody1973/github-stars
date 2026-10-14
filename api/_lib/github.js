@@ -44,11 +44,20 @@ function githubHeaders(accept) {
   return headers;
 }
 
+// 404/410 = deleted, 451 = legally blocked, 403 without a rate-limit signal = disabled by GitHub.
+// Treating these as "gone" lets the picker skip them; a real rate limit still throws.
+function isGone(response) {
+  if ([404, 410, 451].includes(response.status)) return true;
+  if (response.status !== 403) return false;
+  const rateLimited = response.headers.get("x-ratelimit-remaining") === "0" || response.headers.has("retry-after");
+  return !rateLimited;
+}
+
 export async function fetchRepoDetails(fullName) {
   const repoResponse = await fetch(`https://api.github.com/repos/${fullName}`, {
     headers: githubHeaders("application/vnd.github+json")
   });
-  if (repoResponse.status === 404) return null;
+  if (isGone(repoResponse)) return null;
   if (!repoResponse.ok) {
     const remaining = repoResponse.headers.get("x-ratelimit-remaining");
     throw new Error(`GitHub returned ${repoResponse.status} for ${fullName}. Remaining API calls: ${remaining ?? "unknown"}. Set GITHUB_TOKEN to raise the limit.`);
