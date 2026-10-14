@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Five GitHub projects from Tarik Moody's stars, every weekday, grouped by theme." />
+    <title>Daily Picks · Tarik Moody</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./blog.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#posts">Skip to posts</a>
+
+    <header class="nav" id="top">
+      <div class="nav__inner">
+        <a class="brand" href="/" aria-label="Stars Index home">
+          <span class="brand__mark">✦</span>
+          <span>Stars Index</span>
+        </a>
+        <nav class="nav__right" aria-label="Page">
+          <a href="/">Index</a>
+          <a href="/blog" aria-current="page">Daily picks</a>
+          <a href="https://github.com/tmoody1973?tab=stars" rel="noreferrer">GitHub ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="blog">
+      <div class="section-head">
+        <p class="eyebrow">DAILY PICKS</p>
+        <h1 class="blog__title">Five GitHub projects, every weekday</h1>
+        <p>Grouped by theme from Tarik's starred repos. Each post copies straight into LinkedIn.</p>
+      </div>
+      <p class="posts-status" id="posts-status" role="status">Loading posts…</p>
+      <div class="posts" id="posts"></div>
+    </main>
+
+    <footer class="foot-stmt">
+      <p class="foot-stmt__line">A star list should work like memory, not archaeology.</p>
+      <div class="foot-stmt__meta">
+        <span class="brand brand--footer"><span class="brand__mark">✦</span> Stars Index</span>
+        <span>Built from public GitHub data · 2026</span>
+      </div>
+    </footer>
+
+    <template id="post-template">
+      <article class="post">
+        <canvas class="post__card" width="1080" height="1350" role="img"></canvas>
+        <div class="post__content">
+          <p class="post__date" data-field="date"></p>
+          <h2 class="post__theme" data-field="theme"></h2>
+          <div class="post__body" data-field="body"></div>
+          <div class="post__actions">
+            <button class="btn btn--primary" type="button" data-action="copy">Copy for LinkedIn</button>
+            <button class="btn btn--ghost" type="button" data-action="download">Download image</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="./blog.js"></script>
+  </body>
+</html>
