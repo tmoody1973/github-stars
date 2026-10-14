@@ -4,6 +4,13 @@ export const MAX_POST_CHARS = 3000;
 export const HOOK_MAX_CHARS = 210;
 export const MAX_SLOP_SCORE = 25;
 export const MAX_TITLE_CHARS = 60;
+// Programmer-only terms a non-technical reader can't follow. Each must be explained in brackets
+// on first use, e.g. "MCP (a way to plug tools into AI apps)", or replaced. Acronyms match
+// case-sensitively; words match in any case. Plurals and hyphenated forms count.
+export const JARGON_TERMS = [
+  "CLI", "API", "SDK", "GPU", "CPU", "LLM", "MCP", "RAG", "JSON", "YAML",
+  "tmux", "Docker", "Kubernetes", "AppKit", "Electron", "worktree", "inference"
+];
 
 const DASHES = /[–—]/;
 const URL_PATTERN = /https?:\/\//i;
@@ -34,12 +41,34 @@ export function checkPost({ hook, intro, question, entries, bodyText }) {
   if (DASHES.test(bodyText)) problems.push("Replace every em dash and en dash with a period, comma, colon, or parentheses.");
   if (bodyText.length > MAX_POST_CHARS) problems.push(`Post is ${bodyText.length} characters; LinkedIn allows ${MAX_POST_CHARS}.`);
 
+  const jargon = unexplainedJargon(postProse({ hook, intro, question, entries }));
+  if (jargon.length) {
+    problems.push(`Explain these the first time in brackets, or replace them with everyday words: ${jargon.join(", ")}.`);
+  }
+
   const { score, findings } = scoreProse(proseForScoring(bodyText));
   if (score > MAX_SLOP_SCORE) {
     problems.push(`Sloplint score ${score} is above ${MAX_SLOP_SCORE}. Rewrite these: ${describeFindings(findings)}.`);
   }
 
   return { ok: problems.length === 0, score, problems };
+}
+
+// The model-written prose in reading order. Titles are left out so project names can't trip the check.
+export function postProse({ hook, intro, question, entries }) {
+  return [hook, intro, ...entries.map((entry) => entry.blurb), question].join("\n\n");
+}
+
+export function unexplainedJargon(text) {
+  return JARGON_TERMS.filter((term) => {
+    const flags = /^[A-Z]{2,}$/.test(term) ? "" : "i";
+    const match = new RegExp(`\\b${term}s?\\b`, flags).exec(text);
+    if (!match) return false;
+    // The bracket may follow the term's short phrase: "MCP servers (add-ons that ...)".
+    const explainedAfter = /^(?:[\s-]+[\w]+){0,2}\s*\(/.test(text.slice(match.index + match[0].length));
+    const insideBrackets = /\(\s*$/.test(text.slice(0, match.index));
+    return !explainedAfter && !insideBrackets;
+  });
 }
 
 function proseForScoring(text) {
