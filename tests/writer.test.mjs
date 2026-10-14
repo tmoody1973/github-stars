@@ -65,3 +65,17 @@ test("the OpenAI call has a timeout so a hung request fails with a logged error"
   await writeDraft({ repos, feedback: null });
   assert.ok(init.signal instanceof AbortSignal);
 });
+
+test("system prompt writes for non-technical readers without losing specifics", () => {
+  const [system] = buildMessages({ repos, feedback: null });
+  for (const rule of [
+    "people who don't work in tech",
+    "what the project does for a person",
+    "explain it in a few everyday words",
+    "Keep one concrete detail",
+    "Name the theme in everyday words",
+    "No commands, file paths, code, or install steps"
+  ]) {
+    assert.ok(system.content.includes(rule), `missing plain-English rule: ${rule}`);
+  }
+});

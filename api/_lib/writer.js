@@ -20,7 +20,7 @@ const DRAFT_SCHEMA = {
     additionalProperties: false,
     required: ["theme", "hook", "intro", "entries", "question"],
     properties: {
-      theme: { type: "string", description: "2 to 5 words naming what the five projects share. Sentence case. 40 characters or fewer." },
+      theme: { type: "string", description: "2 to 6 everyday words naming what the five projects share. Sentence case. 40 characters or fewer." },
       hook: { type: "string", description: `The opening line of the post. ${HOOK_MAX_CHARS} characters or fewer.` },
       intro: { type: "string", description: "1 to 3 short sentences after the hook." },
       entries: {
@@ -33,7 +33,7 @@ const DRAFT_SCHEMA = {
           properties: {
             repoId: { type: "integer" },
             title: { type: "string", description: "The project's name as its README writes it. No tagline." },
-            blurb: { type: "string", description: "1 to 3 sentences, 320 characters or fewer." }
+            blurb: { type: "string", description: "2 to 3 sentences in everyday words, 400 characters or fewer." }
           }
         }
       },
@@ -46,6 +46,8 @@ function systemPrompt() {
   return `You write a weekday LinkedIn post for Tarik Moody: five GitHub projects from his starred repos that share a theme.
 
 The post reads like a person who saves interesting projects and is passing along the good ones. Plain, specific, a little opinionated. Not a press release.
+
+Who reads it: mostly smart people who don't work in tech (people in media, nonprofits, business, the arts), with engineers reading too. Write so the first group can follow every sentence and the second still finds a detail worth knowing.
 
 What you return is assembled into this shape by code:
 {hook}
@@ -63,8 +65,12 @@ ${FORMAT_EXAMPLE}
 
 Rules:
 - The hook is the only part people see before LinkedIn's "see more" cut. Keep it to ${HOOK_MAX_CHARS} characters. Make it concrete: say what these five have in common or what surprised you. No questions as hooks, no "Here are 5".
-- The intro says why these five belong together in 1 to 3 short sentences.
-- Each blurb starts with what the project is, then gives one or two specific details from its README.
+- The intro says why these five belong together in 1 to 3 short sentences, in everyday language.
+- Each blurb starts with what the project does for a person, in everyday words: "Lets you run a ChatGPT-style assistant on your own laptop", not "Runs LLMs locally".
+- When a technical term is needed (LLM, GPU, API, open source, framework, inference), explain it in a few everyday words the first time it appears, or swap it for an everyday word. No unexplained acronyms. Explaining a general term is fine; adding new claims about a project is not.
+- No commands, file paths, code, or install steps, and skip details only a programmer would act on (terminal tools, config files, version numbers). Pick the detail a non-programmer would care about.
+- Keep one concrete detail from the README in each blurb (a number, a platform, a feature) so technical readers still trust it.
+- Name the theme in everyday words, since it is printed large on the post image: "Run AI on your own laptop", not "Local and tool-using LLMs".
 - Use only facts found in that repo's README, description or topics. If a README is thin or missing, write a shorter blurb. Never fill gaps with guesses.
 - You may react ("this one caught my eye", "I want to try this on our station logs") but never claim Tarik used, tested or deployed a project. He starred it; that is all you know.
 - The starred date is real data. You may say "starred this week" only when the dates support it.
@@ -75,7 +81,7 @@ Rules:
 - Vary sentence length. Repeat the clearest word instead of cycling synonyms.
 - No "not just X, it's Y", no "Here's the thing", no "Let's dive in", no generic upbeat ending, no "game-changer".
 - Never use these words: ${bannedWords().join(", ")}.
-- The question is specific and answerable from experience, such as which one readers would open first or what they use instead. Not "What do you think?".
+- The question is specific and easy for anyone to answer, technical or not, such as which one readers would try first or what problem they would use it for. Not "What do you think?".
 - The whole post must stay under ${MAX_POST_CHARS} characters including links. Aim for 1,200 to 2,000.
 
 The rules above win wherever these references differ (for example, first person never means claiming Tarik used a project).
