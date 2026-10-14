@@ -1,4 +1,5 @@
 import { refreshStars } from "./_lib/refresh.js";
+import { isAuthorizedCron } from "./_lib/auth.js";
 
 const PUBLIC_REFRESH_MIN_INTERVAL_MS = 60_000;
 
@@ -48,8 +49,3 @@ function isAuthorizedManualRefresh(request) {
   return providedToken === configuredToken;
 }
 
-function isAuthorizedCron(request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return false;
-  return request.headers.authorization === `Bearer ${cronSecret}`;
-}

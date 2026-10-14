@@ -21,7 +21,7 @@ The app includes the backend path for real semantic search:
 - `/api/stars` returns the saved index
 - `/api/search` performs vector search when embeddings are present, otherwise it falls back to database keyword search
 - `/api/refresh` refreshes GitHub stars for manual sync and Vercel cron polling
-- `vercel.json` polls `/api/refresh` every 5 minutes; unchanged repos keep their existing embeddings
+- `vercel.json` runs `/api/refresh` daily at 11:00 UTC; unchanged repos keep their existing embeddings
 
 Required environment variables:
 
@@ -31,6 +31,9 @@ Required environment variables:
 - `GITHUB_STARS_REFRESH_TOKEN`: required for production refresh endpoint access
 - `CRON_SECRET`: required for Vercel cron bearer-token authorization
 - `ALLOW_PUBLIC_REFRESH`: set to `1` to let the frontend Refresh button trigger a throttled production refresh
+- `POSTS_ADMIN_TOKEN`: required for manual runs of `/api/generate-post` (sent as the `x-admin-token` header)
+- `OPENAI_WRITER_MODEL`: optional, the model that writes daily posts (default `gpt-5`)
+- `GITHUB_TOKEN`: recommended; daily picks make about a dozen GitHub calls per run
 
 Local database commands:
 
@@ -38,6 +41,18 @@ Local database commands:
 npm run db:migrate
 npm run db:ingest
 ```
+
+## Daily picks
+
+Every weekday at 12:00 UTC a cron calls `/api/generate-post`. It picks the newest unused star plus its four
+most similar unused stars, reads their READMEs, has OpenAI write a LinkedIn-ready post, checks it with the
+vendored sloplint scorer (score 25 or lower, no em or en dashes), and saves it. Posts appear at `/blog`
+with a Copy for LinkedIn button and a downloadable 1080x1350 title card.
+
+- `GET /api/posts` lists published posts, newest first.
+- `POST /api/generate-post` runs it manually; add `?dryRun=1` to see a post without saving it.
+- Design: `docs/plans/2026-10-14-daily-picks-design.md`. Decisions: `docs/decisions/002` to `004`.
+- `TEST_DATABASE_URL=<neon branch> npm test` also runs the database integration test.
 
 ## Local development
 
