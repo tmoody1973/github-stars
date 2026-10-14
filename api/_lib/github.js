@@ -35,3 +35,30 @@ export async function fetchGitHubStars() {
 
   return [...seen.values()];
 }
+
+const README_MAX_CHARS = 6000;
+
+function githubHeaders(accept) {
+  const headers = { Accept: accept, "User-Agent": "github-stars-index" };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  return headers;
+}
+
+export async function fetchRepoDetails(fullName) {
+  const repoResponse = await fetch(`https://api.github.com/repos/${fullName}`, {
+    headers: githubHeaders("application/vnd.github+json")
+  });
+  if (repoResponse.status === 404) return null;
+  if (!repoResponse.ok) {
+    const remaining = repoResponse.headers.get("x-ratelimit-remaining");
+    throw new Error(`GitHub returned ${repoResponse.status} for ${fullName}. Remaining API calls: ${remaining ?? "unknown"}. Set GITHUB_TOKEN to raise the limit.`);
+  }
+  const repo = await repoResponse.json();
+
+  const readmeResponse = await fetch(`https://api.github.com/repos/${fullName}/readme`, {
+    headers: githubHeaders("application/vnd.github.raw+json")
+  });
+  const readme = readmeResponse.ok ? await readmeResponse.text() : "";
+
+  return { archived: Boolean(repo.archived || repo.disabled), readme: readme.slice(0, README_MAX_CHARS) };
+}
