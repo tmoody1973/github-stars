@@ -11,10 +11,11 @@ const NEIGHBOR_POOL = 8;
 // identical embedding and would cluster into a meaningless "theme".
 const NO_DESCRIPTION = "No description provided.";
 
-export async function pickRepos({ db = sql(), detailsFor = fetchRepoDetails } = {}) {
-  const seeds = await findSeedCandidates(db);
+// excludeIds: repos from a group that already failed the gate in this run.
+export async function pickRepos({ db = sql(), detailsFor = fetchRepoDetails, excludeIds = [] } = {}) {
+  const seeds = await findSeedCandidates(db, excludeIds);
   for (const seed of seeds) {
-    const neighbors = await findNeighbors(db, seed.id);
+    const neighbors = await findNeighbors(db, seed.id, excludeIds);
     const kept = await keepActive([seed, ...neighbors], detailsFor, PICK_COUNT);
     if (kept) return { seedRepoId: seed.id, repos: kept };
   }
@@ -34,13 +35,14 @@ export async function keepActive(candidates, detailsFor, count) {
   return kept.length === count ? kept : null;
 }
 
-async function findSeedCandidates(db) {
+async function findSeedCandidates(db, excludeIds) {
   const rows = await db`
     SELECT r.id, r.full_name, r.name, r.description, r.topics, r.url, r.starred_at
     FROM repos r
     WHERE r.embedding IS NOT NULL
       AND r.description NOT IN ('', ${NO_DESCRIPTION})
       AND NOT EXISTS (SELECT 1 FROM post_repos used WHERE used.repo_id = r.id)
+      AND r.id <> ALL(${excludeIds}::bigint[])
       AND NOT EXISTS (
         SELECT 1
         FROM (SELECT seed_repo_id FROM posts ORDER BY post_date DESC LIMIT 3) recent
@@ -53,7 +55,7 @@ async function findSeedCandidates(db) {
   return rows.map(rowToCandidate);
 }
 
-async function findNeighbors(db, seedId) {
+async function findNeighbors(db, seedId, excludeIds) {
   // "+ 0" forces an exact scan instead of the approximate index, matching searchRepos; 992 rows is cheap.
   const rows = await db`
     SELECT r.id, r.full_name, r.name, r.description, r.topics, r.url, r.starred_at
@@ -63,6 +65,7 @@ async function findNeighbors(db, seedId) {
       AND r.embedding IS NOT NULL
       AND r.description NOT IN ('', ${NO_DESCRIPTION})
       AND NOT EXISTS (SELECT 1 FROM post_repos used WHERE used.repo_id = r.id)
+      AND r.id <> ALL(${excludeIds}::bigint[])
       AND 1 - (r.embedding <=> s.embedding) >= ${NEIGHBOR_MIN_SIMILARITY}
     ORDER BY (r.embedding <=> s.embedding) + 0
     LIMIT ${NEIGHBOR_POOL}
