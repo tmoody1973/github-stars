@@ -6,6 +6,10 @@
     {
       "path": "/api/refresh",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/generate-post",
+      "schedule": "0 12 * * 1-5"
     }
   ]
 }
