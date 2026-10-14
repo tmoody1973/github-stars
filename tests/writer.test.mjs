@@ -73,7 +73,8 @@ test("system prompt writes for non-technical readers without losing specifics", 
     "what the project does for a person",
     "explain it in a few everyday words",
     "Keep one concrete detail",
-    "Name the theme in everyday words"
+    "Name the theme in everyday words",
+    "No commands, file paths, code, or install steps"
   ]) {
     assert.ok(system.content.includes(rule), `missing plain-English rule: ${rule}`);
   }

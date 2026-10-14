@@ -68,6 +68,7 @@ Rules:
 - The intro says why these five belong together in 1 to 3 short sentences, in everyday language.
 - Each blurb starts with what the project does for a person, in everyday words: "Lets you run a ChatGPT-style assistant on your own laptop", not "Runs LLMs locally".
 - When a technical term is needed (LLM, GPU, API, open source, framework, inference), explain it in a few everyday words the first time it appears, or swap it for an everyday word. No unexplained acronyms. Explaining a general term is fine; adding new claims about a project is not.
+- No commands, file paths, code, or install steps, and skip details only a programmer would act on (terminal tools, config files, version numbers). Pick the detail a non-programmer would care about.
 - Keep one concrete detail from the README in each blurb (a number, a platform, a feature) so technical readers still trust it.
 - Name the theme in everyday words, since it is printed large on the post image: "Run AI on your own laptop", not "Local and tool-using LLMs".
 - Use only facts found in that repo's README, description or topics. If a README is thin or missing, write a shorter blurb. Never fill gaps with guesses.
