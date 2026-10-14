@@ -7,6 +7,10 @@ import { writeDraft, WRITER_MODEL } from "./_lib/writer.js";
 import { todayInChicago } from "./_lib/dates.js";
 import { isAuthorizedAdmin, isAuthorizedCron } from "./_lib/auth.js";
 
+// Two write-check-rewrite rounds take roughly 2-4 minutes; Vercel stops the function at 300s.
+const MAX_GROUPS = 2;
+const SECOND_GROUP_CUTOFF_MS = 150_000;
+
 export function createHandler(deps) {
   return async function handler(request, response) {
     response.setHeader("Cache-Control", "no-store");
@@ -31,16 +35,30 @@ export function createHandler(deps) {
         if (existing) return response.status(200).json({ ok: true, status: "exists", post: existing });
       }
 
-      const picked = await deps.pickRepos();
-      const composed = await deps.composePost({ repos: picked.repos, write: deps.write });
+      // ponytail: failed groups are not remembered between days, so a group that keeps failing
+      // costs one wasted attempt each morning. Add a skipped list in the database if that shows up.
+      const started = deps.now();
+      const excludeIds = [];
+      const failures = [];
+      let picked;
+      let composed;
+      for (let group = 1; group <= MAX_GROUPS; group += 1) {
+        if (group > 1 && deps.now() - started > SECOND_GROUP_CUTOFF_MS) break;
+        picked = await deps.pickRepos({ excludeIds: [...excludeIds] });
+        composed = await deps.composePost({ repos: picked.repos, write: deps.write });
+        if (composed.ok) break;
+        const repos = picked.repos.map((repo) => repo.fullName);
+        console.error("generate-post: gate failed", { date, group, repos, problems: composed.problems });
+        failures.push({ repos, problems: composed.problems });
+        excludeIds.push(...picked.repos.map((repo) => repo.id));
+      }
 
       if (!composed.ok) {
-        console.error("generate-post: gate failed", { date, problems: composed.problems });
         return response.status(422).json({
           ok: false,
           status: "gate-failed",
-          problems: composed.problems,
-          repos: picked.repos.map((repo) => repo.fullName)
+          problems: failures.flatMap((failure) => failure.problems),
+          groups: failures
         });
       }
 
@@ -75,9 +93,10 @@ export default createHandler({
   },
   today: () => todayInChicago(),
   findPostByDate: (date) => findPostByDate(date),
-  pickRepos: () => pickRepos(),
+  pickRepos: (options) => pickRepos(options),
   composePost,
   write: writeDraft,
   savePost: (post) => savePost(post),
-  writerModel: WRITER_MODEL
+  writerModel: WRITER_MODEL,
+  now: () => Date.now()
 });
