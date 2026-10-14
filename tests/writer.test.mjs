@@ -74,7 +74,9 @@ test("system prompt writes for non-technical readers without losing specifics", 
     "explain it in a few everyday words",
     "Keep one concrete detail",
     "Name the theme in everyday words",
-    "No commands, file paths, code, or install steps"
+    "No commands, file paths, code, or install steps",
+    "in brackets right after its first use",
+    "tmux"
   ]) {
     assert.ok(system.content.includes(rule), `missing plain-English rule: ${rule}`);
   }

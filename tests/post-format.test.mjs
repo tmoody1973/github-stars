@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assemblePost, checkPost, HOOK_MAX_CHARS } from "../api/_lib/post-format.js";
+import { assemblePost, checkPost, HOOK_MAX_CHARS, postProse, unexplainedJargon } from "../api/_lib/post-format.js";
 import { sampleDraft, sampleEntries } from "./fixtures/sample-draft.mjs";
 
 function samplePost(overrides = {}) {
@@ -72,4 +72,42 @@ test("rejects a sloppy post and names what was flagged", () => {
   }));
   assert.equal(result.ok, false);
   assert.ok(result.problems.some((problem) => problem.startsWith("Sloplint score")));
+});
+
+test("rejects programmer jargon left unexplained", () => {
+  const entries = sampleEntries();
+  entries[0] = { ...entries[0], blurb: "A CLI for maps that runs inside tmux sessions." };
+  const result = checkPost(samplePost({ entries }));
+  const problem = result.problems.find((item) => item.startsWith("Explain these"));
+  assert.ok(problem, "expected a jargon problem");
+  assert.ok(problem.includes("CLI") && problem.includes("tmux"));
+});
+
+test("accepts jargon explained in brackets on first use", () => {
+  const entries = sampleEntries();
+  entries[0] = { ...entries[0], blurb: "A CLI (a text-only command window) for maps. Later the CLI stays simple." };
+  assert.deepEqual(unexplainedJargon(postProse({ ...sampleDraft, entries })), []);
+});
+
+test("accepts a spelled-out term with the acronym in brackets", () => {
+  assert.deepEqual(unexplainedJargon("It speaks the Model Context Protocol (MCP)."), []);
+});
+
+test("catches plurals and hyphenated forms", () => {
+  assert.deepEqual(unexplainedJargon("Two APIs and GPU-accelerated drawing."), ["API", "GPU"]);
+});
+
+test("ignores jargon inside project titles", () => {
+  const entries = sampleEntries();
+  entries[1] = { ...entries[1], title: "RustGIS CLI" };
+  const result = checkPost(samplePost({ entries }));
+  assert.ok(!result.problems.some((item) => item.startsWith("Explain these")));
+});
+
+test("accepts a bracket that explains the term's short phrase", () => {
+  assert.deepEqual(unexplainedJargon("A list of MCP servers (add-ons that let AI apps work with maps)."), []);
+});
+
+test("a bracket three words later does not count", () => {
+  assert.deepEqual(unexplainedJargon("A CLI for drawing city maps (beta)."), ["CLI"]);
 });

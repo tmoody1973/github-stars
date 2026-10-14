@@ -8,7 +8,7 @@ export const sampleRepos = [
 
 export const sampleDraft = {
   theme: "Open-source GIS",
-  hook: "Five open-source GIS projects I starred this month, and one of them is a list of MCP servers for maps.",
+  hook: "Five open-source GIS projects I starred this month, and one of them is a list of MCP servers (add-ons that let AI apps work with maps).",
   intro: "Most of these run in a browser. Two of them keep your data on your own machine.",
   question: "Which of these would you open first, and what do you use for maps today?",
   entries: [
