@@ -51,4 +51,3 @@ async function embedRepos(repos) {
   }
   return embeddings;
 }
-function (
